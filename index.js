@@ -28,8 +28,26 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/available", async (req, res) => {
+      const date = req.query.date;
+      const services = await collection.find().toArray();
+      const query = { date: date };
+      const allBookings = await booksCollection.find(query).toArray();
+
+      services.forEach((service) => {
+        const serviceBookings = allBookings.filter(
+          (b) => b.treatment === service.name
+        );
+        const booked = serviceBookings.map((s) => s.slot);
+        const available = service.slots.filter((s) => !booked.includes(s));
+        service.slots = available;
+      });
+      res.send(services);
+    });
+
     app.post("/bookings", async (req, res) => {
       const bookings = req.body;
+      console.log(bookings.date);
       const query = {
         treatment: bookings.treatment,
         date: bookings.date,
@@ -47,13 +65,6 @@ async function run() {
   }
 }
 
-console.log(uri);
-
-// client.connect(err => {
-//   const collection = client.db("test").collection("devices");
-//   // perform actions on the collection object
-//   client.close();
-// });
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
