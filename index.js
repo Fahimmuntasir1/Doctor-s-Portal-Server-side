@@ -16,6 +16,20 @@ const client = new MongoClient(uri, {
   useUnifiedTopology: true,
   serverApi: ServerApiVersion.v1,
 });
+const verifyJwt = (req, res, next) => {
+  const authHeader = req.headers.authorization;
+  if (!authHeader) {
+    return res.status(401).send({ messages: "unauthorized access" });
+  }
+  const token = authHeader.split(" ")[1];
+  jwt.verify(token, process.env.ACCESS_TOKEN_SECRET, function (err, decoded) {
+    if (err) {
+      return res.status(403).send({ messages: "Forbidden access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
 
 async function run() {
   try {
@@ -29,6 +43,11 @@ async function run() {
       const cursor = collection.find(query);
       const result = await cursor.toArray();
       res.send(result);
+    });
+
+    app.get("/user", async (req, res) => {
+      const users = await userCollection.find().toArray();
+      res.send(users);
     });
 
     app.get("/available", async (req, res) => {
@@ -48,11 +67,16 @@ async function run() {
       res.send(services);
     });
 
-    app.get("/booking", async (req, res) => {
+    app.get("/booking", verifyJwt, async (req, res) => {
       const patient = req.query.patient;
-      const query = { patient: patient };
-      const bookings = await booksCollection.find(query).toArray();
-      res.send(bookings);
+      const decodedEmail = req.decoded.email;
+      if (decodedEmail === patient) {
+        const query = { patient: patient };
+        const bookings = await booksCollection.find(query).toArray();
+        res.send(bookings);
+      } else {
+        return res.status(403).send({ messages: "request Forbidden" });
+      }
     });
 
     app.put("/user/:email", async (req, res) => {
