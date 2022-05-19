@@ -40,7 +40,7 @@ async function run() {
 
     app.get("/slot", async (req, res) => {
       const query = {};
-      const cursor = collection.find(query);
+      const cursor = collection.find(query).project({name : 1});
       const result = await cursor.toArray();
       res.send(result);
     });
