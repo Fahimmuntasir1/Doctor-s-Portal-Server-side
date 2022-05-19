@@ -81,11 +81,12 @@ async function run() {
 
     app.put("/user/admin/:email", verifyJwt, async (req, res) => {
       const email = req.params.email;
+
       const requester = req.decoded.email;
       const requesterAccount = await userCollection.findOne({
         email: requester,
       });
-      if (requesterAccount.role === "admin") {
+      if (requesterAccount.role === "Admin") {
         const filter = { email: email };
         const updateDoc = {
           $set: { role: "Admin" },
@@ -100,8 +101,8 @@ async function run() {
     app.get("/admin/:email", async (req, res) => {
       const email = req.params.email;
       const user = await userCollection.findOne({ email: email });
-      const admin = user.role === "admin";
-      res.send(admin);
+      const admin = user.role === "Admin";
+      res.send({ admin });
     });
 
     app.put("/user/:email", async (req, res) => {
