@@ -37,10 +37,23 @@ async function run() {
     const collection = client.db("doctor's-portal").collection("slots");
     const booksCollection = client.db("doctor's-portal").collection("bookings");
     const userCollection = client.db("doctor's-portal").collection("users");
+    const doctorCollection = client.db("doctor's-portal").collection("doctors");
+
+    const verifyAdmin = async (req, res, next) => {
+      const requester = req.decoded.email;
+      const requesterAccount = await userCollection.findOne({
+        email: requester,
+      });
+      if (requesterAccount.role === "Admin") {
+        next();
+      } else {
+        res.status(403).send({ messages: "Forbidden access" });
+      }
+    };
 
     app.get("/slot", async (req, res) => {
       const query = {};
-      const cursor = collection.find(query).project({name : 1});
+      const cursor = collection.find(query).project({ name: 1 });
       const result = await cursor.toArray();
       res.send(result);
     });
@@ -79,23 +92,15 @@ async function run() {
       }
     });
 
-    app.put("/user/admin/:email", verifyJwt, async (req, res) => {
+    app.put("/user/admin/:email", verifyJwt, verifyAdmin, async (req, res) => {
       const email = req.params.email;
 
-      const requester = req.decoded.email;
-      const requesterAccount = await userCollection.findOne({
-        email: requester,
-      });
-      if (requesterAccount.role === "Admin") {
-        const filter = { email: email };
-        const updateDoc = {
-          $set: { role: "Admin" },
-        };
-        const result = await userCollection.updateOne(filter, updateDoc);
-        res.send(result);
-      } else {
-        res.status(403).send({ messages: "Forbidden access" });
-      }
+      const filter = { email: email };
+      const updateDoc = {
+        $set: { role: "Admin" },
+      };
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
     });
 
     app.get("/admin/:email", async (req, res) => {
@@ -136,6 +141,17 @@ async function run() {
       }
       const result = await booksCollection.insertOne(bookings);
       return res.send({ success: true, result });
+    });
+
+    app.get("/doctor", verifyJwt, verifyAdmin, async (req, res) => {
+      const result = await doctorCollection.find().toArray();
+      res.send(result);
+    });
+
+    app.post("/doctor", verifyJwt, verifyAdmin, async (req, res) => {
+      const doctor = req.body;
+      const result = await doctorCollection.insertOne(doctor);
+      res.send(result);
     });
   } finally {
     // await client.close();
